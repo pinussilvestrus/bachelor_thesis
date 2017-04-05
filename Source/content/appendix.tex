@@ -1,0 +1,46 @@
+\appendix
+\section{Appendix}
+\label{sec:appendix}
+
+\begin{lstlisting}[caption=Activity with lifecycle callbacks, label=basicactivity]
+public class SensorActivity extends Activity implements SensorEventListener {
+	private SensorManager sensorManager;
+	private Sensor accelerometer;
+
+	@Override
+	public final void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
+		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		sensorManager.unregisterListener(this);
+	}
+
+	@Override
+	public final void onSensorChanged(SensorEvent event) {
+		StringBuilder log = new StringBuilder("Acceleration:");
+		log.append(" X: ").append(String.valueOf(event.values[0]));
+		log.append(" Y: ").append(String.valueOf(event.values[1]));
+		log.append(" Z: ").append(String.valueOf(event.values[2]));
+		System.out.println(log.toString());
+	}
+
+	@Override
+	public final void onAccuracyChanged(Sensor sensor, int accuracy) {
+		// sensor accuracy changed
+	}
+}
+\end{lstlisting}
+
+\clearpage
