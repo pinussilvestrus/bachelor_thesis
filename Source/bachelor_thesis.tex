@@ -1,6 +1,6 @@
 \documentclass[a4paper, DIV12, 2.5headlines, bigheadings, titlepage, openbib]{scrartcl}
 
-\usepackage[ngerman, english]{babel}
+\usepackage[ngerman]{babel}
 \usepackage[T1]{fontenc}
 \usepackage{geometry}
 \usepackage[utf8x]{inputenc}
@@ -82,7 +82,7 @@
 \begin{document}
 
 	%%% Headers & Footers
-	\selectlanguage{english}
+	\selectlanguage{ngerman}
 	\automark{section}
 	\ohead{\includegraphics[height=1.3cm,clip,viewport={0 60 250 180}]{utils/hpi_logo.pdf}}
 	\chead{}
@@ -104,7 +104,7 @@
 	\input{disclaimer.tex}
 
 	%%% Abstract
-	\input{abstract.tex}
+	%%\input{abstract.tex}
 
 	%%% TOC
 	\tableofcontents
@@ -123,7 +123,7 @@
 	%%% Bibliography
 	%\bibliographystyle{babunsrt3-fl}
 	\addcontentsline{toc}{section}{Bibliography}
-	\bibliographystyle{babunsrt-fl}
+	\bibliographystyle{gerplain}
 	\bibliography{projektbib}
 	\clearpage
 
