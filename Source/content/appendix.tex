@@ -2,7 +2,7 @@
 \section{Appendix}
 \label{sec:appendix}
 
-\begin{lstlisting}[caption=Abstract file storage strategy, label=strategyinterface]
+\begin{lstlisting}[caption=Abstract file storage strategy, label=code:strategyinterface]
 class AbstractFileStorageStrategy {
 	constructor() {
 		if (new.target === AbstractFileStorageStrategy) {
@@ -38,7 +38,7 @@ class AbstractFileStorageStrategy {
 module.exports = AbstractFileStorageStrategy;
 \end{lstlisting}
 
-\begin{lstlisting}[caption=Registrieren des FileStorage Services, label=filestorageindex]
+\begin{lstlisting}[caption=Registrieren des FileStorage Services, label=code:filestorageindex]
 	module.exports = function () {
 		const app = this;
 		
@@ -63,5 +63,41 @@ module.exports = AbstractFileStorageStrategy;
 		directoryService.after(hooks.after);
 	};
 \end{lstlisting}
+
+
+\begin{lstlisting}[caption=deleteFile() Funktion der AWS S3-Strategy, label=code:awsS3deletefile]
+	deleteFile(userId, path) {
+		if (!userId || !path) return Promise.reject(new errors.BadRequest('Missing parameters'));
+	
+		// prüfe Berechtigung für die Löschen-Aktion
+		return filePermissionHelper.checkPermissions(userId, path, ['can-write'])
+	
+			// finde gegeben Nutzer in Datenbank
+			.then(res => UserModel.findById(userId).exec())
+				.then(result => {
+					if (!result || !result.schoolId) return Promise.reject(errors.NotFound("User not found"));
+		
+					// erstelle AWS-Verbindungsobjekts
+					const awsObject = createAWSObject(result.schoolId);
+		
+					// stelle Parameter für das Löschen der Datei ein
+					const params = {
+						Bucket: awsObject.bucket,
+						Delete: {
+							Objects: [
+								{
+									Key: path
+								}
+							],
+							Quiet: true
+						}
+					};
+		
+					// Führe Aktion aus
+					return promisify(awsObject.s3.deleteObjects, awsObject.s3)(params);
+		});
+	}
+\end{lstlisting}
+
 
 \clearpage
