@@ -38,4 +38,30 @@ class AbstractFileStorageStrategy {
 module.exports = AbstractFileStorageStrategy;
 \end{lstlisting}
 
+\begin{lstlisting}[caption=Registrieren des FileStorage Services, label=filestorageindex]
+	module.exports = function () {
+		const app = this;
+		
+		// Registriert die drei Services
+		app.use('/fileStorage/directories', new DirectoryService());
+		app.use('/fileStorage/signedUrl', new SignedUrlService());
+		app.use('/fileStorage', new FileStorageService());
+		
+		// Holt die registrierten Services, um die Hooks zu initialisieren
+		const fileStorageService = app.service('/fileStorage');
+		const signedUrlService = app.service('/fileStorage/signedUrl');
+		const directoryService = app.service('/fileStorage/directories');
+		
+		// Initialisiere "Before"-Hooks
+		fileStorageService.before(hooks.before);
+		signedUrlService.before(hooks.before);
+		directoryService.before(hooks.before);
+		
+		// Initialisiere "After"-Hooks
+		fileStorageService.after(hooks.after);
+		signedUrlService.after(hooks.after);
+		directoryService.after(hooks.after);
+	};
+\end{lstlisting}
+
 \clearpage

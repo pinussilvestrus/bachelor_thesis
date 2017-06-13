@@ -1,14 +1,88 @@
 \section{Implementierung}
 \label{sec:implementation}
 
+Nachdem das grobe Konzept der Dateiverwaltung der Schul-Cloud geschildert wurde, werden anschließend wirkliche Implementierungsdetails präsentiert. Diese wird in einer Zweiteilung erfolgen. Zunächst wird relevanter Code des Schul-Cloud Servers \footnote{Schul-Cloud Server - \url{https://github.com/schul-cloud/schulcloud-server}} aufgezeigt und beschrieben. Dann werden dazu passende Teile vom User Interfaces des Schul-Cloud Clients \footnote{Schul-Cloud Client - \url{https://github.com/schul-cloud/schulcloud-client}} dargelegt. Beide Komponenten sind öffentlich auf GitHub \footnote{GitHub - \url{https://github.com}} zugänglich.
+
 \subsection{Schul-Cloud Server}
 \subsubsection{Einbettung in das Schul-Cloud - Datenmodell}
-\subsubsection{Berechtigungsverwaltung}
+
+Der Schul-Cloud Server basiert auf Node.js \footnote{Node.js - \url{https://nodejs.org}} und Feathers \footnote{Feathers - \url{https://feathersjs.com/}}, einer auf Express \footnote{Express - \url{http://expressjs.com/de/}} aufbauenden Schicht für das schnelle Entwickeln von REST-APIs \footnote{Representational State Transfer (REST) - \url{https://de.wikipedia.org/wiki/Representational_State_Transfer}}. Die Dateiverwaltung des Backends wird somit auch als typischer Feathers-Service bereitgestellt. Dieser befindet sich im Unterordner \textit{src/services/fileStorage} und beinhaltet die grundlegende Funktionalität der Dateiverwaltung. Anders als typische Feathers Services besitzt dieser kein Model, sondern dient eher als Proxy-Service. Die \textit{index.js} bündelt die drei Teilservices des File-Storage Services zusammen und macht sie nach außen zugänglich (Appendix \ref{filestorageindex}). Diese sind zum einem der \textit{FileStorageService}, welcher sich um die eigentliche Verteilung von Dateianfragen, wie das Erstellen und Löschen von Dateien, kümmert. Dazu kommt der \textit{SignedUrlService}, welcher die Zugriffslink generiert. Als drittes gibt es den \textit{DirectoryService}, welcher zusätzliche Funktionalitäten für Ordner bereit stellt. Alle API-Routen werden unter \textit{/fileStorage/} registriert, wobei der \textit{SignedUrlService} unter \textit{/fileStorage/signedUrl} und der \textit{DirectoryService} unter \textit{/fileStorage/directories} verfügbar ist. Die einzelnen Funktionen aller API-Routen sind in der Dokumentation des Servers \cite{online:serverswagger} verfügbar. \\
+
+In der \textit{index.js} des FileStorage Services erfolgt außerdem die Auswahl der richtigen Strategie für die Schule des Zugreifenden auf die API. Eine in der Schul-Cloud vermerkte Schule kann genau einen \textit{fileStorageType} besitzen, wie die \textit{model.js} des SchoolServices (\textit{src/services/school}) des Backend zeigt:
+
+\begin{lstlisting}[label= schoolModel]
+	'use strict';
+
+	const fileStorageTypes = ['awsS3']; // aktuell unterstützte Strategien
+	
+	const schoolSchema = new Schema({
+		name: {type: String, required: true},
+		address: {type: Object},
+		fileStorageType: {type: String, enum: fileStorageTypes}, // Eigenschaft zur Auswahl der richtigen Strategie
+		systems: [{type: Schema.Types.ObjectId, ref: 'system'}],
+		federalState: {type: Schema.Types.ObjectId, ref: 'federalstate'},
+		createdAt: {type: Date, 'default': Date.now},
+		updatedAt: {type: Date, 'default': Date.now}
+	}	,{
+		timestamps: true
+	});
+\end{lstlisting}
+
+Vor dem Aufrufen jeder Route wird die Funktion \textit{resolveStorageType} in \textit{src/services/fileStorage/hooks/index.js} ausgeführt, die dafür sorgt, dass der Typ des Schul-Buckets aus der im Nutzer referenzierten Schule erhalten wird. Die \textit{userId} wird vorher wie bei Feathers üblich aus dem Request via Authentifizierung ermittelt.
+
+\begin{lstlisting}[label= resolveStorageType]
+	const resolveStorageType = (hook) => {
+		let userService = hook.app.service("users");
+		
+		// finde angemeldeten Nutzer
+		return userService.find({query: {
+				_id: hook.params.payload.userId,
+				$populate: ['schoolId'] // hole referenzierte Schule
+			}}).then(res => {
+			
+				// speichere korrekten Typ
+				hook.params.payload.fileStorageType = res.data[0].schoolId.fileStorageType;
+				return hook;
+		});
+	};
+\end{lstlisting}
+
+Aus dieser Information kann der FileStorage Service dann die richtige Strategie wählen. Hier ein Beispiel für die Funktion \textit{find}, welche auf \textit{GET /fileStorage/} registriert ist und die Dateien für einen gegebenen Pfad holt:
+
+\begin{lstlisting}[label=findFiles]
+	/**
+	* @returns {Promise}
+	* @param query contains the file path
+	* @param payload contains fileStorageType and userId, set by middleware
+	*/
+	find({query, payload}) {
+		return createCorrectStrategy(payload.fileStorageType).getFiles(payload.userId, query.path);
+	}
+\end{lstlisting}
+
+Die Funktion \textit{createCorrectStrategy} erzeugt ein Objekt für die jeweilige Strategie, welche in \textit{src/services/fileStorage/strategies} implementiert sind:
+
+\begin{lstlisting}
+	const strategies = {
+		awsS3: AWSStrategy
+	};
+
+	const createCorrectStrategy = (fileStorageType) => {
+		const strategy = strategies[fileStorageType];
+		if (!strategy) throw new errors.BadRequest("No file storage provided for this school");
+		return new strategy();
+	};
+\end{lstlisting}
+
 \subsubsection{AWS S3 - Strategy als Beispiel}
 
 \todo[inline]{FakeS3 aufsetzen und dann Beispielfunktion zeigen}
 
+\subsubsection{Berechtigungsverwaltung}
+
 \subsection{Schul-Cloud Client}
+
+\todo{Datei-Bereich und Themeneditor}
 \subsubsection{User Interface}
 \subsubsection{Administration}
 \subsubsection{File Sharing}
