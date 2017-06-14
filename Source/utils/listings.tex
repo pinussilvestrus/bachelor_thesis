@@ -101,9 +101,9 @@
 
 \lstdefinestyle{JavaScript}{
 	backgroundcolor=\color{code_background},
-	commentstyle=\color{code_comments},
-	keywordstyle=\color{code_keywords},
+	keywordstyle=\color{hpired}\bfseries,
 	numberstyle=\tiny\color{code_numbers},
+	commentstyle=\color{brown}\ttfamily,
 	stringstyle=\color{code_strings},
 	identifierstyle=\color{code_identifiers},
 	basicstyle=\scriptsize,
@@ -123,5 +123,14 @@
 	showspaces=false,
 	showstringspaces=false,
 	showtabs=false,
-	tabsize=2
+	tabsize=2,
+	% German umlauts
+	literate=%
+	{Ö}{{\"O}}1
+	{Ä}{{\"A}}1
+	{Ü}{{\"U}}1
+	{ß}{{\ss}}1
+	{ü}{{\"u}}1
+	{ä}{{\"a}}1
+	{ö}{{\"o}}1
 }

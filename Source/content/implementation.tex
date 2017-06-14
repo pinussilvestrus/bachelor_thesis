@@ -75,6 +75,7 @@ Die Funktion \textit{createCorrectStrategy} erzeugt ein Objekt für die jeweilig
 \end{lstlisting}
 
 \subsubsection{AWS S3 - Strategy als Beispiel}
+\label{sec:awss3impl}
 
 Im Schul-Cloud Server lassen sich eine Reihe von Strategien für verschiedene Typen von File Storage Providern implementieren. Diese werden im Ordner \textit{src/services/fileStorage/strategies} abgelegt. Die Klasse \textit{AbstractFileStorageStrategy} (Anhang \ref{code:strategyinterface}) gibt die zu implementierenden Funktionen vor. Die einzelnen Strategien sind somit Unterklassen dieser. In diesem Abschnitt wird die Implementierung für einen AWS S3-Adapter beschrieben. S3 dient während der Pilotphase der Schul-Cloud als Standart-Provider. Um schnell entwickeln zu können, wurde ein S3-Abbild auf dem Development-System der Schul-Cloud \footnote{Development-System - \url{https://schul.tech/}} eingestellt. Hierbei wurde \textit{minion} \footnote{minion - \url{https://github.com/minio/minio}} genutzt, einem Open Source Projekt, was Funktionen von S3 nachbildet. Die AWS S3-Strategy befindet sich in \textit{src/services/fileStorage/strategies/awsS3.js}. \\
 
@@ -118,6 +119,7 @@ Mithilfe dieser Konfiguration und dem aws-sdk kann man nun Befehle an eine S3-In
 In der Variable \textit{params} in Zeile 16 von Anhang \ref{code:awsS3deletefile} wird dann angegeben, um welche Art von Aktion es sich auf das Bucket handelt. Da in dieser Funktion die mit \textit{path} angegebene Datei gelöscht werden soll, wird ein Array von zu löschenden Datei-Keys angelegt, welches die gesuchte Datei enthält. Eine S3-Datei ist immer über ihren Pfad referenziert. Es ist so theoretisch möglich, mehrere Dateien auf einmal zu löschen. Das macht sich die S3-Strategie beim Löschen von Ordnern zu Nutze. Zum Schluss wird die Aktion auf dem Bucket ausgeführt. Dazu wird üblicherweise \textit{awsObjekt.s3.deleteObjects(params)} genutzt. Um besser mit \textit{Promises} \footnote{Promises - \url{https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise}} arbeiten zu können, wird \textit{promisify} \footnote{es6-promisify - \url{https://www.npmjs.com/package/es6-promisify}} um die Funktion gelegt. Der Vorteil des Strategy-Patterns ist es nun, dass die Anbindung an eine ownCloud-Instanz komplett anders implementiert werden kann. Man muss darauf achten, dass Ein- und Ausgabe-Parameter gleich sind. Hier macht sich der Status als Open Source Projekt bezahlt, da externe Entwickler verschiedene Strategien mit einbringen und so den File-Storage Service der Schul-Cloud beliebig erweitern können. Die S3-Strategie bietet hier einen sehr guten Einstiegspunkt für weitere Implementierungen.
 
 \subsubsection{Berechtigungsverwaltung}
+\label{sec:permissionsimpl}
 
 Vor jedem Aufruf einer Dateioperation werden die Berechtigungen des zugreifenden Nutzers geprüft. Wie in Anhang \ref{code:awsS3deletefile} (Zeile 5) zu sehen ist, kümmert sich der \textit{filePermissionHelper} darum. Dieser befindet sich in \textit{src/services/filePermission/utils/filePermissionHelper.js} und gehört zum \textit{FilePermissionService}, einem weiteren Feathers Service, der sich ausschließlich um die Rechteverwaltung innerhalb der Dateiverwaltung kümmert. Die Funktion \textit{checkPermissions()} ist folgendermaßen aufgebaut:
 
@@ -128,7 +130,7 @@ Vor jedem Aufruf einer Dateioperation werden die Berechtigungen des zugreifenden
 	}
 \end{lstlisting}
 
-Wie hier zu sehen, teilt sich die Überprüfung in zwei einzelne Berechtigungschecks. Zum einen wird in der Funktion \textit{checkNormalPermissions} die generelle Berechtigung überprüft, etwa ob es sich um eine eigene Datei handelt bzw. um eine Kursdatei und der zugreifende Nutzer Teilnehmer dieses Kurses ist. Diese Informationen erhält er aus dem \textit{filePath}, da in diesem die Zugehörigkeit der Datei mit enthalten ist (siehe Abschnitt 3.1.). Die komplette Implementierung dieses Checks findet sich in Anhang \ref{code:fphnormal}. Sollte diese Überprüfung fehlschlagen, gibt es noch die Möglichkeit, dass der Zugreifende die Datei von einem anderen Nutzer freigegeben bekommen hat. Dann muss ein Datenbankeintrag vom Typ \textit{FilePermissionModel} für den Nutzer und die Datei existieren. Der \textit{FilePermissionService} verwaltet dieses Datenbankmodell in der Datei \textit{src/services/filePermission/model.js}:
+Wie hier zu sehen, teilt sich die Überprüfung in zwei einzelne Berechtigungschecks. Zum einen wird in der Funktion \textit{checkNormalPermissions} die generelle Berechtigung überprüft, etwa ob es sich um eine eigene Datei handelt bzw. um eine Kursdatei und der zugreifende Nutzer Teilnehmer dieses Kurses ist. Diese Informationen erhält er aus dem \textit{filePath}, da in diesem die Zugehörigkeit der Datei enthalten ist (siehe Abschnitt \ref{sec:basicaufbau}). Die komplette Implementierung dieses Checks findet sich in Anhang \ref{code:fphnormal}. Sollte diese Überprüfung fehlschlagen, gibt es noch die Möglichkeit, dass der Zugreifende die Datei von einem anderen Nutzer freigegeben bekommen hat. Dann muss ein Datenbankeintrag vom Typ \textit{FilePermissionModel} für den Nutzer und die Datei existieren. Der \textit{FilePermissionService} verwaltet dieses Datenbankmodell in der Datei \textit{src/services/filePermission/model.js}:
 
 \begin{lstlisting}
 	const permissionTypes = ['can-read', 'can-write'];
@@ -147,6 +149,7 @@ Wie hier zu sehen, teilt sich die Überprüfung in zwei einzelne Berechtigungsch
 Um eine zusätzliche Zugriffsberechtigung auf die Datei zu bekommen, muss ein solcher Eintrag in der Datenbank existieren. Die Eigenschaft \textit{key} beinhaltet den Pfad der Datei. Im Array \textit{permissions} sammeln sich Tupel aus Nutzer-ID und bestimmten Rechten. Das können Schreib- sowie Leserechte sein. Um die Menge an Datenbankeinträgen zu sparen, gibt es für jede Schul-Cloud Datei nur einen Eintrag, welche alle zusätzlichen Berechtigungen in \textit{permissions} speichert. Somit kann man zum Beispiel überprüfen, ob eine Datei für einen bestimmten Nutzer zum Teilen freigegeben wurde. Falls es für eine Datei einen Datenbankeintrag gibt mit einem leeren \textit{permissions} Array, gibt dies schon Auskunft darüber, ob die Datei überhaupt zum Teilen freigegeben ist, zum Beispiel wenn ein geteilter Link im Client erstellt wurde. Momentan ist nur die Freigabe für einzelne Nutzer möglich, so dass man bei Gruppenfreigaben jeden einzelnen Benutzer hinzufügen müsste. Dies lässt sich aber noch auf Gruppenebene erweitern. Mit diesen Datenbankeinträgen überprüft die Funktion \textit{checkExtraPermissions()} (Anhang \ref{code:fphextra}), ob eine zusätzliche Zugriffsberechtigung für den Nutzer und der gegebenen Datei existiert. Führen beide Checks zu keinem positiven Ergebnis, hat der Nutzer definitiv keine Berechtigung für diese Datei.
 
 \subsection{Schul-Cloud Client}
+\label{sec:client}
 
 \subsubsection{Anbindung zum Server}
 Der Schul-Cloud Client ist ebenfalls mit Node.js implementiert. Er kommt ohne großes Web-Framework aus und basiert auf einem einfachen Express-Server. Hier benutzt er \textit{Handlebars} \footnote{Handlebars - \url{http://handlebarsjs.com/}} als Template Engine. Die Anbindung an den Schul-Cloud Server erfolgt über den \textit{filesController} in der  Datei \textit{controllers/files.js}. Hier gibt es eine Reihe von Dateioperationen, welche regelmäßig mit dem Schul-Cloud Server interagieren. Ein Beispiel ist das Erstellen eines neuen Ordners:
@@ -183,9 +186,10 @@ Neben der normalen Dateiansicht für persönlichen, Kurs - und Klassendateien ha
 
 \subsubsection{Administration}
 
+Da es einer Schule möglich sein soll, selbst über die Art des File Storage Providers zu bestimmen, gibt es für die Rolle \textit{Administrator} einen besonderen Menü-Punkt in der Seitenmenüleiste. Unter "Administration" kann der Schul-Administrator neben anderen Informationen auch den File Storage Typ auswählen (Anhang Abbildung \ref{fig:adminFileStorage}). Hier soll es in Zukunft auch ein Import für bestehende Dateiablagen geben sowie die Einstellung für Berechtigungen.
 
-\todo{Kurz halten}
-\subsubsection{File Sharing}
-\todo{Kurz halten}
+\subsubsection{Dateien teilen}
+
+Das Teilen von Dateien funktioniert wie in Abschnitt \ref{sec:sharing_concept} beschrieben momentan mit dem Generieren von Zugriffslinks. Dafür kann man auf das Teilen-Icon an einer Datei klicken und ein Modal-Fenster mit einem neuen Link öffnet sich (Anhang Abbildung \ref{fig:sharingfileui}). Dieser kann an mehrere Leute weitergegeben werden. Erst mit dem Klick auf das Teilen-Icon wird die Teilen-Funktion freigeschaltet. 
 
 \clearpage
