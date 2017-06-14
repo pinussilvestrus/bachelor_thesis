@@ -99,5 +99,81 @@ module.exports = AbstractFileStorageStrategy;
 	}
 \end{lstlisting}
 
+\begin{lstlisting}[caption=checkNormalPermissions() Funktion des filePermissionHelper, label=code:fphnormal]
+	checkNormalPermissions(userId, filePath) {
+		let values = filePath.split("/");
+		if (values[0] === '') values = values.slice(1);
+		if (values.length < 2) return Promise.reject(new errors.BadRequest("Path is invalid"));
+		const contextType = values[0];
+		const contextId = values[1];
+		switch (contextType) {
+			case 'users':
+			
+				// überprüfe, ob zu Prüfender Besitzer der Datei ist
+				if (contextId !== userId.toString()) {
+					return Promise.reject(new errors.Forbidden("You don't have permissions!"));
+				} else {
+					return Promise.resolve();
+				}
+				
+			case 'courses':
+			
+			// überprüfe, a) ob der Nutzer zum Kurs gehört, b) ob der Kurs überhaupt existiert
+			return CourseModel.find({
+				$and: [
+					{$or: [{userIds: userId}, {teacherIds: userId}]},
+					{_id: contextId}
+				]
+			}).exec().then(res => {
+				if (!res || res.length <= 0) {
+					return Promise.reject(new errors.Forbidden("You don't have permissions!"));
+				}
+				
+				return Promise.resolve(res);
+			});
+			
+		case 'classes':
+			
+			// überprüfe, a) ob der Nutzer zur Klasse gehört, b) ob die Klasse überhaupt existiert
+			return ClassModel.find({
+				$and: [
+					{$or: [{userIds: userId}, {teacherIds: userId}]},
+					{_id: contextId}
+				]
+			}).exec().then(res => {
+				if (!res || res.length <= 0) {
+					return Promise.reject(new errors.Forbidden("You don't have permissions!"));
+				}
+			
+			return Promise.resolve(res);
+		});
+		
+		default:
+			return Promise.reject(new errors.BadRequest("Path is invalid"));
+		}
+	}
+\end{lstlisting}
 
+\begin{lstlisting}[caption=checkExtraPermissions() Funktion des filePermissionHelper, label=code:fphextra]
+	checkExtraPermissions(userId, fileKey, permissionTypes) {
+		if (!fileKey || fileKey === '') return Promise.reject(new errors.Forbidden("You don't have permissions!"));
+	
+		return FilePermissionModel.find({key: fileKey}).exec().then(res => {
+		
+		// Datenbankobjekt sollte einzigartig für Datei sein, trotzdem werden mehrere Einträge hier zusammengefasst
+		let permissions = _.flatten(res.map(filePermissions => filePermissions.permissions));
+	
+		// versuche Datenbankeintrag für bestimmten Nutzer zu finden
+		let permissionExists = permissions.filter(p => {
+			return JSON.stringify(userId) === JSON.stringify(p.userId) && _.difference(permissionTypes, p.permissions).length === 0;
+		}).length > 0;
+	
+		if (!permissionExists) return Promise.reject(new errors.Forbidden("You don't have permissions!"));
+	
+		return Promise.resolve();
+		}).catch(err => {
+			return Promise.reject(new errors.Forbidden("You don't have permissions!"));
+		});
+	}
+\end{lstlisting}
 \clearpage

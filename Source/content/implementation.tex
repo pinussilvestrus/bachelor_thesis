@@ -6,7 +6,7 @@ Nachdem das grobe Konzept der Dateiverwaltung der Schul-Cloud geschildert wurde,
 \subsection{Schul-Cloud Server}
 \subsubsection{Einbettung in das Schul-Cloud - Datenmodell}
 
-Der Schul-Cloud Server basiert auf Node.js \footnote{Node.js - \url{https://nodejs.org}} und Feathers \footnote{Feathers - \url{https://feathersjs.com/}}, einer auf Express \footnote{Express - \url{http://expressjs.com/de/}} aufbauenden Schicht für das schnelle Entwickeln von REST-APIs \footnote{Representational State Transfer (REST) - \url{https://de.wikipedia.org/wiki/Representational_State_Transfer}}. Die Dateiverwaltung des Backends wird somit auch als typischer Feathers-Service bereitgestellt. Dieser befindet sich im Unterordner \textit{src/services/fileStorage} und beinhaltet die grundlegende Funktionalität der Dateiverwaltung. Anders als typische Feathers Services besitzt dieser kein Model, sondern dient eher als Proxy-Service. Die \textit{index.js} bündelt die drei Teilservices des File-Storage Services zusammen und macht sie nach außen zugänglich (Appendix \ref{code:filestorageindex}). Diese sind zum einem der \textit{FileStorageService}, welcher sich um die eigentliche Verteilung von Dateianfragen, wie das Erstellen und Löschen von Dateien, kümmert. Dazu kommt der \textit{SignedUrlService}, welcher die Zugriffslink generiert. Als drittes gibt es den \textit{DirectoryService}, welcher zusätzliche Funktionalitäten für Ordner bereit stellt. Alle API-Routen werden unter \textit{/fileStorage/} registriert, wobei der \textit{SignedUrlService} unter \textit{/fileStorage/signedUrl} und der \textit{DirectoryService} unter \textit{/fileStorage/directories} verfügbar ist. Die einzelnen Funktionen aller API-Routen sind in der Dokumentation des Servers \cite{online:serverswagger} verfügbar. \\
+Der Schul-Cloud Server basiert auf Node.js \footnote{Node.js - \url{https://nodejs.org}} und Feathers \footnote{Feathers - \url{https://feathersjs.com/}}, einer auf Express \footnote{Express - \url{http://expressjs.com/de/}} aufbauenden Schicht für das schnelle Entwickeln von REST-APIs \footnote{Representational State Transfer (REST) - \url{https://de.wikipedia.org/wiki/Representational_State_Transfer}}. Die Dateiverwaltung des Backends wird somit auch als typischer Feathers-Service bereitgestellt. Dieser befindet sich im Unterordner \textit{src/services/fileStorage} und beinhaltet die grundlegende Funktionalität der Dateiverwaltung. Anders als typische Feathers Services besitzt dieser kein MongoDB \footnote{MongoDB - \url{https://www.mongodb.com/de}} - Model, sondern dient eher als Proxy-Service. Die \textit{index.js} bündelt die drei Teilservices des File-Storage Services zusammen und macht sie nach außen zugänglich (Appendix \ref{code:filestorageindex}). Diese sind zum einem der \textit{FileStorageService}, welcher sich um die eigentliche Verteilung von Dateianfragen, wie das Erstellen und Löschen von Dateien, kümmert. Dazu kommt der \textit{SignedUrlService}, welcher die Zugriffslink generiert. Als drittes gibt es den \textit{DirectoryService}, welcher zusätzliche Funktionalitäten für Ordner bereit stellt. Alle API-Routen werden unter \textit{/fileStorage/} registriert, wobei der \textit{SignedUrlService} unter \textit{/fileStorage/signedUrl} und der \textit{DirectoryService} unter \textit{/fileStorage/directories} verfügbar ist. Die einzelnen Funktionen aller API-Routen sind in der Dokumentation des Servers \cite{online:serverswagger} verfügbar. \\
 
 In der \textit{index.js} des FileStorage Services erfolgt außerdem die Auswahl der richtigen Strategie für die Schule des Zugreifenden auf die API. Eine in der Schul-Cloud vermerkte Schule kann genau einen \textit{fileStorageType} besitzen, wie die \textit{model.js} des SchoolServices (\textit{src/services/school}) des Backend zeigt:
 
@@ -119,11 +119,40 @@ In der Variable \textit{params} in Zeile 16 von Appendix \ref{code:awsS3deletefi
 
 \subsubsection{Berechtigungsverwaltung}
 
+Vor jedem Aufruf einer Dateioperation werden die Berechtigungen des zugreifenden Nutzers geprüft. Wie in Appendix \ref{code:awsS3deletefile} (Zeile 5) zu sehen ist, kümmert sich der \textit{filePermissionHelper} darum. Dieser befindet sich in \textit{src/services/filePermission/utils/filePermissionHelper.js} und gehört zum \textit{FilePermissionService}, einem weiteren Feathers Service, der sich ausschließlich um die Rechteverwaltung innerhalb der Dateiverwaltung kümmert. Die Funktion \textit{checkPermissions()} ist folgendermaßen aufgebaut:
+
+\begin{lstlisting}
+	checkPermissions(userId, filePath, permissions = ["can-read", "can-write"]) {
+		return this.checkNormalPermissions(userId, filePath)
+			.catch(err => this.checkExtraPermissions(userId, filePath, permissions));
+	}
+\end{lstlisting}
+
+Wie hier zu sehen, teilt sich die Überprüfung in zwei einzelne Berechtigungschecks. Zum einen wird in der Funktion \textit{checkNormalPermissions} die generelle Berechtigung überprüft, etwa ob es sich um eine eigene Datei handelt bzw. um eine Kursdatei und der zugreifende Nutzer Teilnehmer dieses Kurses ist. Diese Informationen erhält er aus dem \textit{filePath}, da in diesem die Zugehörigkeit der Datei mit enthalten ist (siehe Abschnitt 3.1.). Die komplette Implementierung dieses Checks findet sich in Appendix \ref{code:fphnormal}. Sollte diese Überprüfung fehlschlagen, gibt es noch die Möglichkeit, dass der Zugreifende die Datei von einem anderen Nutzer freigegeben bekommen hat. Dann muss ein Datenbankeintrag vom Typ \textit{FilePermissionModel} für den Nutzer und die Datei existieren. Der \textit{FilePermissionService} verwaltet dieses Datenbankmodell in der Datei \textit{src/services/filePermission/model.js}:
+
+\begin{lstlisting}
+	const permissionTypes = ['can-read', 'can-write'];
+	
+	const filePermissionSchema = new Schema({
+		key: {type: String, required: true, unique : true},
+		permissions: [{
+			userId: {type: Schema.Types.ObjectId, ref: 'user'},
+			permissions: [{type: String, enum: permissionTypes}]
+		}],
+		createdAt: {type: Date, 'default': Date.now},
+		updatedAt: {type: Date, 'default': Date.now}
+	});
+\end{lstlisting}
+
+Um eine zusätzliche Zugriffsberechtigung auf die Datei zu bekommen, muss ein solcher Eintrag in der Datenbank existieren. Die Eigenschaft \textit{key} beinhaltet den Pfad der Datei. Im Array \textit{permissions} sammeln sich Tupel aus Nutzer-ID und bestimmten Rechten. Das können Schreib- sowie Leserechte sein. Um die Menge an Datenbankeinträgen zu sparen, gibt es für jede Schul-Cloud Datei nur einen Eintrag, welche alle zusätzlichen Berechtigungen in \textit{permissions} speichert. Somit kann man zum Beispiel überprüfen, ob eine Datei für einen bestimmten Nutzer zum Teilen freigegeben wurde. Falls es für eine Datei einen Datenbankeintrag gibt mit einem leeren \textit{permissions} Array, gibt dies schon Auskunft darüber, ob die Datei überhaupt zum Teilen freigegeben ist, zum Beispiel wenn ein geteilter Link im Client erstellt wurde. Momentan ist nur die Freigabe für einzelne Nutzer möglich, so dass man bei Gruppenfreigaben jeden einzelnen Benutzer hinzufügen müsste. Dies lässt sich aber noch auf Gruppenebene erweitern. Mit diesen Datenbankeinträgen überprüft die Funktion \textit{checkExtraPermissions()} (Appendix \ref{code:fphextra}), ob eine zusätzliche Zugriffsberechtigung für den Nutzer und der gegebenen Datei existiert. Führen beide Checks zu keinem positiven Ergebnis, hat der Nutzer definitiv keine Berechtigung für diese Datei.
+
 \subsection{Schul-Cloud Client}
 
-\todo{Datei-Bereich und Themeneditor}
 \subsubsection{Anbindung zum Server}
+Der Schul-Cloud Client ist ebenfalls mit Node.js implementiert. Er kommt ohne großes Web-Framework aus und basiert auf einem einfachen Express-Server. Hier benutzt er \textit{Handlebars} \footnote{Handlebars - \url{http://handlebarsjs.com/}} als Template Engine. 
 \subsubsection{User Interface}
+Die Projektstruktur gibt es vor, dass sich das User Interface der Dateiverwaltung im Unterordner \textit{views/files} befindet. Die 
+\todo{Datei-Bereich und Themeneditor}
 \subsubsection{Administration}
 \subsubsection{File Sharing}
 
