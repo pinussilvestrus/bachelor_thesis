@@ -149,10 +149,52 @@ Um eine zusätzliche Zugriffsberechtigung auf die Datei zu bekommen, muss ein so
 \subsection{Schul-Cloud Client}
 
 \subsubsection{Anbindung zum Server}
-Der Schul-Cloud Client ist ebenfalls mit Node.js implementiert. Er kommt ohne großes Web-Framework aus und basiert auf einem einfachen Express-Server. Hier benutzt er \textit{Handlebars} \footnote{Handlebars - \url{http://handlebarsjs.com/}} als Template Engine. 
+Der Schul-Cloud Client ist ebenfalls mit Node.js implementiert. Er kommt ohne großes Web-Framework aus und basiert auf einem einfachen Express-Server. Hier benutzt er \textit{Handlebars} \footnote{Handlebars - \url{http://handlebarsjs.com/}} als Template Engine. Die Anbindung an den Schul-Cloud Server erfolgt über den \textit{filesController} in der  Datei \textit{controllers/files.js}. Hier gibt es eine Reihe von Dateioperationen, welche regelmäßig mit dem Schul-Cloud Server interagieren. Ein Beispiel ist das Erstellen eines neuen Ordners:
+
+\begin{lstlisting}
+	// erstelle neuen Ordner
+	router.post('/directory', function (req, res, next) {
+		const {name, dir} = req.body;
+	
+		const basePath = dir;
+		const dirName = name || 'Neuer Ordner';
+		
+		// Server-Anbindung
+		api(req).post('/fileStorage/directories', {
+			json: {
+				path: basePath + dirName,
+			}
+		}).then(_ => {
+			
+			// Rückmeldung an den Browser
+			res.sendStatus(200);
+		}).catch(err => {
+			res.status((err.statusCode || 500)).send(err);
+		});
+	});
+\end{lstlisting} 
+
+Für jeden Zugriff auf den Server dient das \textit{api} - Objekt, welches in der Datei \textit{api.js} im Stammverzeichnis initialisiert wird. Dieser baut eine einfache Verbindung zum Schul-Cloud Server und macht HTTP-Requests möglich. Zum Erstellen eines Ordners muss man demzufolge \textit{POST /fileStorage/directories/} aufrufen. Der \textit{filesController} sorgt zudem für das Rendering der richtigen Template-Dateien.
+
 \subsubsection{User Interface}
-Die Projektstruktur gibt es vor, dass sich das User Interface der Dateiverwaltung im Unterordner \textit{views/files} befindet. Die 
-\todo{Datei-Bereich und Themeneditor}
+Im Folgenden wird auf die genaue Implementierung der einzelnen Dateioperationen im Client nicht näher eingegangen. Viel mehr liegt der Schwerpunkt auf die Nutzerinteraktion. Dazu dienen einzelne Screenshots vom Schul-Cloud Produktivsystems \footnote{Schul-Cloud Produktivsystem - \url{https://schul-cloud.org}} (Stand \today). Die Projektstruktur gibt es vor, dass sich das User Interface der Dateiverwaltung im Unterordner \textit{views/files} befindet. Die normale Dateiverwaltung befindet sich auf der Route \textit{/files/} bzw. unter dem Menüpunkt "Meine Dateien". Hier sieht man zunächst die persönliches Dateien (Abbildung \ref{fig:screenMeineDateien}), d.h. alle diejenigen, die unter \textit{"users/" + Nutzer-ID} des angemeldeten Nutzers gespeichert sind. In der Seitennavigation sieht man nun weitere Menüpunkte unter "Meine Dateien". So kann man nun auf die Kurs- sowie Klassendateien zugreifen. In dieser Dateiverwaltung hat man außerdem die Möglichkeit, die Datei im Browser zu öffnen.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\linewidth]{images/screenMeineDateien}
+	\caption[Caption for implementation]{Ansicht für die persönlichen Dateien}
+	\label{fig:screenMeineDateien}
+\end{figure}
+
+Neben der normalen Dateiansicht für persönliche, Kurs - und Klassendateien hat man außerdem die Möglichkeit, als Lehrer Dateien direkt im Unterrichtskontext einzufügen. Dazu geht man auf einen Kurs, dann auf ein Thema, bearbeitet dieses Thema und fügt eine Text-Komponente hinzu. Hier wurde der eingebaute \textit{ckEditor} \footnote{ckEditor - \url{http://ckeditor.com/}} so überarbeitet, dass man entweder per Drag \& Drop eine Datei hineinschieben kann oder über die Bilderauswahl ein Bild aus dem Kurskontext auswählen kann (Abbildung \ref{fig:screenCkEditor}).
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\linewidth]{images/screenCkEditor}
+	\caption[Caption for implementation]{Ansicht für das Hinzufügen einer Datei in den Unterrichtskontext}
+	\label{fig:screenCkEditor}
+\end{figure}
+
 \subsubsection{Administration}
 \subsubsection{File Sharing}
 
