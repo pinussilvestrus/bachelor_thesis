@@ -1,5 +1,5 @@
 # Bachelor's Thesis
-My Bachelor's Thesis in computer science, written at the [Hasso Plattner Institute](http://hpi.de/). PDF version available [here](https://github.com/pinussilvestrus/bachelors-thesis/blob/master/Export/bachelor_thesis.pdf).
+My Bachelor's Thesis in computer science, written at the [Hasso Plattner Institute](http://hpi.de/). PDF version available [here](https://github.com/pinussilvestrus/bachelor_thesis/blob/master/Export/bachelor_thesis.pdf).
 
 ### Providing a distributed file storage for German Schul-Cloud
 One of the major purposes of German Schul-Cloud is to make various teaching materials accessible to everyone and to make them available on several devices. It should be possible to share files collaboratively and use them in lessons without additional software.
