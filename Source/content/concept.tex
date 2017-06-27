@@ -22,9 +22,10 @@ Die grundlegende Struktur sieht vor, dass jede Schule seine eigene logische Einh
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=0.8\linewidth]{images/AufbauDateiverwaltung}
-	\caption[Caption for concept]{Grundaufbau eines Schul-Buckets}
+	\caption[Caption for concept]{Grundaufbau eines Schul-Buckets\footnotemark}
 	\label{fig:aufbau}
 \end{figure}
+\footnotetext{Kiefer 2017}
 
 \subsection{Architektur verteilter Provider}
 \label{sec:strategypatternconcept}
@@ -34,9 +35,10 @@ Die Schul-Cloud stellt während der Pilotphase zwar nur eine S3-Instanz \footnot
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=1\linewidth]{images/strategypattern}
-	\caption[Caption for concept]{Verteilung der Schul-Buckets mithilfe des Strategy-Patterns}
+	\caption[Caption for concept]{Verteilung der Schul-Buckets mithilfe des Strategy-Patterns\footnotemark}
 	\label{fig:strategy}
 \end{figure}
+\footnotetext{Kiefer 2017}
 
 \subsection{Interaktion verschiedener Schul-Cloud Komponenten}
 \label{sec:interactionconcept}
@@ -46,18 +48,20 @@ Im Folgenden wird die Interaktion der verschiedenen Schul-Cloud Komponenten mith
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=1\linewidth]{images/fileumlsequence}
-	\caption[Caption for concept]{Interaktion zwischen Client, Server und File Storage Provider  beim Holen von persönlichen Dateien}
+	\caption[Caption for concept]{Interaktion zwischen Client, Server und File Storage Provider  beim Holen von persönlichen Dateien\footnotemark}
 	\label{fig:interacton_getFiles}
 \end{figure}
+\footnotetext{Kiefer 2017}
 
 Neben dieser einfachen dreigeteilten Interaktion zwischen Client, Server und Provider werden Upload und Download von Dateien direkt zwischen Client und Provider gehandhabt. Das hat den Grund, dass die Übertragung großer Datenmengen bei Dateien im Gigabyte - Bereich nicht über den Server laufen sollen. Abbildung \ref{fig:interaction_upload} zeigt dies anhand des Uploads einer Datei. Der Server fragt beim Provider nun eine Upload-URL an, auf welche der Client dann die Datei \textit{example.jpg} hochladen kann. Der Query-Parameter \textit{action} teilt mit, um welchen Typ von URL es sich handelt, im Falle von \textit{putObject} beim Upload einer Datei. Der Server prüft wieder die Berechtigungen des Clients und sendet dann die URL an den Client zusammen mit wichtigen Meta-Daten der Datei zurück. Diese soll der Client zusammen mit der Datei zum Provider laden, damit der Server später mehr Informationen über die Datei hat, zum Beispiel die Referenzierung eines Vorschaubilds.
 
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=1\linewidth]{images/fileuploadumlsequence}
-	\caption[Caption for concept]{Interaktion zwischen Client, Server und File Storage Provider beim Upload einer Datei}
+	\caption[Caption for concept]{Interaktion zwischen Client, Server und File Storage Provider beim Upload einer Datei\footnotemark}
 	\label{fig:interaction_upload}
 \end{figure}
+\footnotetext{Kiefer 2017}
 
 
 \subsection{Teilen von Dateien}
@@ -67,10 +71,11 @@ Zwar gibt der Aufbau der Dateiverwaltung eine klare Aufteilung zwischen Schul-, 
 
 \begin{figure}[H]
 	\includegraphics[width=1\linewidth]{images/filesharinggeneration}
-	\caption[Caption for concept]{Generierung eines Zugriffslinks}
+	\caption[Caption for concept]{Generierung eines Zugriffslinks\footnotemark}
 	\centering
 	\label{fig:filesharinggeneration}
 \end{figure}
+\footnotetext{Kiefer 2017}
 
 Diesen Link kann der Besitzer der Datei nun an andere Schul-Cloud Nutzer weiterleiten. Der daraus resultierende Zugriff ist in Abbildung \ref{fig:filesharingusing} (Anhang) modelliert. Der Client öffnet den Link und fragt zuerst beim Server an, ob die Sharing-Funktion für die Datei überhaupt freigeschaltet ist. Ist dies nicht freigegeben, erhält der Client einen Fehler. Im anderen Falle wird im Server gespeichert, welcher Nutzer auf die Datei zugreifen möchte, um den Prozess später zu beschleunigen und redundante Prüfungen zu verhindern. Außerdem können so für den Nutzer freigegebene Dateien zusammen aufgelistet werden, wie es Dropbox beispielsweise tut. Anschließend wird eine Anfrage auf die tatsächliche Datei über den Server an den Storage Provider gestellt und diese zurück an den Client gesendet. Dieser Teil des Prozesses ist sehr vereinfacht dargestellt, tatsächlich muss für das Holen der tatsächlichen Datei zunächst eine Zugriffs-URL, wie in Abschnitt \ref{sec:interactionconcept} beschrieben, generiert und an den Client geliefert werden.
 
